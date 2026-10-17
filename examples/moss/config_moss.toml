@@ -82,6 +82,10 @@ moss_logit_mean = 1.09
 moss_logit_std = 0.95
 moss_sigma_cutoff = 0.95
 moss_uniform_mix = 0.01
+# Or: timestep_sampling = "sigmoid" with sigmoid_scale = a number, or a preset (ai-toolkit Sigmoid + Timestep Bias):
+#   "balanced" (= 1.0; sigma < 0.3 / 0.3..0.7 / > 0.7 = 20/60/20%), "content" (high noise, 7/35/58%),
+#   "style" (low noise, 59/34/7%). The moss_logit_* lines only apply to timestep_sampling = "moss".
+# scale_resume = 3  # sigmoid only: 3 more epochs after max_train_epochs with the "style" preset (works with --resume)
 ip_noise_gamma = 0.05
 attn_mode = "flash"  # [moss] flash-attn varlen (same as Anima). 2026-10-17 RTX 5090, 1536 b2: 8.7 s/it vs 14.3 with "torch"
                      # (SDPA + padding mask falls back to a slow kernel); outputs/grads match within bf16 noise.
