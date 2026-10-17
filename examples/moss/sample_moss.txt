@@ -1,0 +1,8 @@
+# MOSS-Image sample prompts: Danbooru-style tags, natural language, or both. Put your trigger word first.
+# Options: --n negative, --w/--h size, --l CFG scale, --s steps, --d seed, --fs sigma shift (default 5).
+
+1girl, solo, long hair, white dress, flower field, sunlight, looking at viewer, smile, A young woman in a white dress stands in a sunny flower field and smiles at the viewer. --n worst quality, bad anatomy, watermark, jpeg artifact, blurry, text --w 832 --h 1216 --l 3 --s 20 --d 1
+
+1boy, solo, short hair, black hair, white shirt, lab coat, wind, night, city lights, bokeh, from below, A man in a lab coat stands on a rooftop at night, his coat blowing in the wind, with blurred city lights behind him. --n worst quality, bad anatomy, watermark, jpeg artifact, blurry, text --w 832 --h 1216 --l 3 --s 20 --d 1
+
+scenery, no humans, mountain lake, dawn, mist, reflection, pine trees, A calm mountain lake at dawn with mist over the water and pine trees reflected on the surface. --n worst quality, watermark, jpeg artifact, blurry, text --w 1216 --h 832 --l 3 --s 20 --d 1

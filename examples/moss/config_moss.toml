@@ -1,0 +1,110 @@
+# MOSS-Image (OpenMOSS) LoRA / LyCORIS training config (example). Run from the repo root with
+#   .\examples\moss	rain_moss.ps1 <dataset_config.toml> <output_name>   (backend\sd_scripts\moss_train_network.py)
+# Replace every path/to/... below.
+# Same style as config_anima38.toml; MOSS-specific keys are marked [moss].
+# Model: train on Base (the official guide leaves Base without post-training for LoRAs); the LoRA also loads on SFT.
+# Dataset TOML: MOSS-Image was pretrained up to ~1024^2 area. 1024 works well; 1536 and 2048 at batch 2 fit in 32 GB
+# (1536 b2 ~10 GiB with RamTorch), but in one test 1536 trained no better than 1024 at the same step count.
+# bucket_reso_steps must be a multiple of 16.
+
+seed = 1234
+max_data_loader_n_workers = 5
+persistent_data_loader_workers = true
+xformers = false
+prior_loss_weight = 1.0
+cache_latents = true
+cache_latents_to_disk = true  # [moss] <image>_<W>x<H>_moss.npz next to each image (128-ch FLUX.2 latents)
+gradient_checkpointing = true
+gradient_accumulation_steps = 1
+unsloth_offload_checkpointing = true  # offload checkpointed activations to CPU RAM (off: ~1% faster, +4.5 GB VRAM at 1536 b2)
+use_ramtorch = true  # [moss] the 252 joint-block Linears (8.9 GB) stay in pinned CPU RAM and stream in: 2026-10-17 1536 b2
+                     # peak 18.3 -> 9.8 GiB, same speed, same losses; costs ~9 GB of RAM. false = all weights in VRAM
+max_train_epochs = 10
+mixed_precision = "bf16"
+lowram = false
+vae_batch_size = 1
+network_dim = 10000
+network_alpha = 10000
+network_train_unet_only = true  # [moss] the text encoder stays frozen (official guide)
+network_module = "lycoris.kohya"
+network_args = [
+  "algo=lokr",
+  "preset=moss",  # [moss] layers.N.proj.{q,k,v,o,ffn_up_gate,ffn_down}; "moss-text" also trains the 2 text refiner blocks
+  "full_matrix=True",
+  "factor=4",
+  "use_tucker=False",
+  "train_norm=False",
+  "dora_wd=True",
+  "wd_on_output=False",  # [moss] ComfyUI applies output-axis DoRA with ||W0|| instead of ||W0+dW|| (3.3% off in a test);
+                         # input-axis DoRA (False) matches ComfyUI exactly. Leave as is unless you only use LyCORIS loaders.
+  "rescaled=False",
+  "use_scalar=False",
+  "bypass_mode=False",
+  "enable_conv=False",
+  "decompose_both=False",
+  "torch_compile=False",
+  "dropout=0.0",
+  "rank_dropout=0.0",
+  "module_dropout=0.0",
+]
+max_grad_norm = 1.0
+lr_scheduler_num_cycles = 1
+lr_scheduler = "constant_with_warmup"
+lr_warmup_steps = 50
+optimizer_type = "AdamW"
+learning_rate = 2e-5
+loss_type = "l2"
+optimizer_args = [
+  "weight_decay=0.001",
+  "betas=(0.9, 0.999)",
+  "eps=1e-8",
+  "fused=True",
+]
+save_model_as = "safetensors"
+output_dir = "path/to/output/MOSS"
+save_state = true
+save_last_n_epochs_state = 1
+save_every_n_epochs = 1
+save_precision = "bf16"
+sample_at_first = true
+sample_every_n_epochs = 1
+sample_prompts = "examples/moss/sample_moss.txt"  # [moss] embeddings cached next to it in sample_moss_moss_te/
+resize_interpolation = "lanczos"
+
+pretrained_model_name_or_path = "path/to/moss_image_base_bf16.safetensors"  # [moss] MOSS-Image-Base transformer, one file
+vae = "path/to/moss_image_vae_fp32.safetensors"  # [moss] FLUX.2 small-decoder VAE, kept fp32
+moss_text_encoder = "path/to/qwen3.5_9b_moss_image_bf16.safetensors"  # [moss] Qwen3.5-9B; Base and SFT share it
+moss_tokenizer_dir = "path/to/MOSS-Image/tokenizer"  # [moss] folder with the Qwen3.5 tokenizer.json
+moss_max_token_length = 4096  # [moss] chat template + caption, official limit
+
+timestep_sampling = "moss"  # [moss] Base's last pretraining distribution: logit(sigma) ~ N(1.09, 0.95), median sigma 0.78
+moss_logit_mean = 1.09
+moss_logit_std = 0.95
+moss_sigma_cutoff = 0.95
+moss_uniform_mix = 0.01
+ip_noise_gamma = 0.05
+attn_mode = "flash"  # [moss] flash-attn varlen (same as Anima). 2026-10-17 RTX 5090, 1536 b2: 8.7 s/it vs 14.3 with "torch"
+                     # (SDPA + padding mask falls back to a slow kernel); outputs/grads match within bf16 noise.
+split_attn = false
+blocks_to_swap = 0
+weighting_scheme = "uniform"
+logit_mean = 0.0
+logit_std = 1.0
+moss_sample_shift = 5.0  # [moss] official sampler: shift 5, Euler, CFG from --l, negative branch skips block 22
+moss_sample_uncond_skip_layers = "22"
+
+text_encoder_batch_size = 1
+cache_text_encoder_outputs = true  # [moss] required: Qwen3.5-9B (~16 GB) is loaded only while caching, then released
+cache_text_encoder_outputs_to_disk = true  # [moss] <image>_moss_te.npz next to each image
+cache_caption_variants = 8  # shuffle_caption=true needs caption variants when TE outputs are cached
+edm2_loss_weighting = false
+enable_bucket = true
+min_bucket_reso = 256
+bucket_reso_steps = 64
+bucket_no_upscale = true
+multires_training = false
+max_bucket_reso = 2048
+shuffle_caption = true
+keep_tokens_separator = "|||"
+caption_tag_dropout_rate = 0.0
+caption_dropout_rate = 0.0
