@@ -53,6 +53,10 @@ lr_scheduler = "constant_with_warmup"
 lr_warmup_steps = 50
 optimizer_type = "AdamW"
 learning_rate = 2e-5
+#learning_rate_DoRA = 1e-4  # lr for DoRA magnitudes (dora_scale) only; default: learning_rate. MOSS column norms are ~2.4
+                            # (Anima rows ~0.45), so at one shared lr DoRA barely moves on MOSS. A higher lr moves it more but
+                            # does not raise its signal-to-noise under Adam. DoRA magnitudes get no weight decay
+                            # (weight_decay_DoRA, default 0). save_precision "bf16" rounds small magnitude changes away: use "fp16".
 loss_type = "l2"
 optimizer_args = [
   "weight_decay=0.001",
@@ -96,6 +100,9 @@ logit_mean = 0.0
 logit_std = 1.0
 moss_sample_shift = 5.0  # [moss] official sampler: shift 5, Euler, CFG from --l, negative branch skips block 22
 moss_sample_uncond_skip_layers = "22"
+#moss_lora_exclude_blocks = "22"  # [moss] leave block 22 out of the LoRA: the negative branch skips it at inference, so a LoRA
+                                  # there acts on cond only and is amplified by CFG (ai-toolkit's MOSS preset does this).
+                                  # Changes the network: do not --resume a state trained with block 22.
 
 text_encoder_batch_size = 1
 cache_text_encoder_outputs = true  # [moss] required: Qwen3.5-9B (~16 GB) is loaded only while caching, then released
