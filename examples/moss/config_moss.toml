@@ -7,6 +7,7 @@
 # (1536 b2 ~10 GiB with RamTorch), but in one test 1536 trained no better than 1024 at the same step count.
 # bucket_reso_steps must be a multiple of 16.
 
+strict_config_keys = true  # a key that names no option (a typo) stops the run; without this it is only a warning
 seed = 1234
 max_data_loader_n_workers = 5
 persistent_data_loader_workers = true
@@ -107,7 +108,8 @@ moss_sample_uncond_skip_layers = "22"
 text_encoder_batch_size = 1
 cache_text_encoder_outputs = true  # [moss] required: Qwen3.5-9B (~16 GB) is loaded only while caching, then released
 cache_text_encoder_outputs_to_disk = true  # [moss] <image>_moss_te.npz next to each image
-cache_caption_variants = 8  # shuffle_caption=true needs caption variants when TE outputs are cached
+cache_caption_variants = 8  # shuffle_caption=true needs caption variants when TE outputs are cached; MOSS-style
+                            # recaptions (examples/moss/recaption) use 16: about 20% original captions, 80% recaptions
 edm2_loss_weighting = false
 enable_bucket = true
 min_bucket_reso = 256
