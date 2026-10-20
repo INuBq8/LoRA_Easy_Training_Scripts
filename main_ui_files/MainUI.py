@@ -262,6 +262,7 @@ class MainWidget(QWidget):
         is_sdxl = str(args.get("general_args").get("sdxl", False))
         is_flux = str(bool(args.get("flux_args")))
         is_anima = str(bool(args.get("anima_args")))
+        is_moss = str(bool(args.get("moss_args")))
 
         # Build train params including accelerate settings
         train_params = {
@@ -269,6 +270,7 @@ class MainWidget(QWidget):
             "sdxl": is_sdxl,
             "flux": is_flux,
             "anima": is_anima,
+            "moss": is_moss,
         }
 
         # Add accelerate settings if enabled

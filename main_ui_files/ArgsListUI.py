@@ -3,6 +3,7 @@ from PySide6 import QtWidgets, QtCore
 from main_ui_files.AccelerateUI import AccelerateWidget
 from main_ui_files.FluxUI import FluxWidget
 from main_ui_files.AnimaUI import AnimaWidget
+from main_ui_files.MossUI import MossWidget
 
 from main_ui_files.BucketUI import BucketWidget
 from main_ui_files.GeneralUI import GeneralWidget
@@ -35,6 +36,7 @@ class ArgsWidget(QtWidgets.QWidget):
         self.ti_widget.setVisible(False)
         self.flux_widget = FluxWidget()
         self.anima_widget = AnimaWidget()
+        self.moss_widget = MossWidget()
 
 
         self.setup_widget()
@@ -65,6 +67,7 @@ class ArgsWidget(QtWidgets.QWidget):
                 or general_args.widget.v2_enable.isChecked()
                 or general_args.widget.sdxl_enable.isChecked()
                 or self.anima_widget.widget.anima_training_box.isChecked()
+                or self.moss_widget.widget.moss_training_box.isChecked()
             )
             self.flux_widget.external_enable_disable(should_disable)
 
@@ -102,10 +105,24 @@ class ArgsWidget(QtWidgets.QWidget):
         self.args_widget_array.append(LoggingWidget())
         self.args_widget_array.append(self.flux_widget)
         self.args_widget_array.append(self.anima_widget)
-        
+        self.args_widget_array.append(self.moss_widget)
+
         # Connect Anima widget signals
         self.anima_widget.Toggled.connect(general_args.enable_disable_model_type)
         self.anima_widget.Toggled.connect(self.network_widget.toggle_sdxl)
+
+        # Connect Moss widget signals
+        self.moss_widget.Toggled.connect(general_args.enable_disable_model_type)
+        self.moss_widget.Toggled.connect(self.network_widget.toggle_sdxl)
+
+        # Disable FP8 when Moss is active (fp8_base is unsupported by the MOSS DiT)
+        def update_fp8_for_moss(moss_enabled: bool) -> None:
+            general_args.widget.FP8_enable.setEnabled(not moss_enabled)
+            if moss_enabled and general_args.widget.FP8_enable.isChecked():
+                general_args.widget.FP8_enable.setChecked(False)
+                general_args.edit_args("fp8_base", False, True)
+
+        self.moss_widget.Toggled.connect(update_fp8_for_moss)
 
         # Disable FP8 when Anima is active (fp8_base is unsupported by Anima DiT)
         def update_fp8_for_anima(anima_enabled: bool) -> None:
@@ -135,6 +152,7 @@ class ArgsWidget(QtWidgets.QWidget):
                 or general_args.widget.v2_enable.isChecked()
                 or general_args.widget.sdxl_enable.isChecked()
                 or self.flux_widget.widget.flux_training_box.isChecked()
+                or self.moss_widget.widget.moss_training_box.isChecked()
             )
             self.anima_widget.external_enable_disable(should_disable)
 
@@ -143,6 +161,26 @@ class ArgsWidget(QtWidgets.QWidget):
         general_args.sdxlChecked.connect(lambda _: refresh_anima_disabled_state())
         general_args.widget.v_param_enable.clicked.connect(lambda _: refresh_anima_disabled_state())
         self.flux_widget.Toggled.connect(lambda _: refresh_anima_disabled_state())
+        self.moss_widget.Toggled.connect(lambda _: refresh_anima_disabled_state())
+
+        # Logic to disable Moss when other things are enabled
+        def refresh_moss_disabled_state() -> None:
+            should_disable = (
+                general_args.widget.v_param_enable.isChecked()
+                or general_args.widget.v2_enable.isChecked()
+                or general_args.widget.sdxl_enable.isChecked()
+                or self.flux_widget.widget.flux_training_box.isChecked()
+                or self.anima_widget.widget.anima_training_box.isChecked()
+            )
+            self.moss_widget.external_enable_disable(should_disable)
+
+        # Connect signals to refresh Moss state
+        general_args.v2Checked.connect(lambda _: refresh_moss_disabled_state())
+        general_args.sdxlChecked.connect(lambda _: refresh_moss_disabled_state())
+        general_args.widget.v_param_enable.clicked.connect(lambda _: refresh_moss_disabled_state())
+        self.flux_widget.Toggled.connect(lambda _: refresh_moss_disabled_state())
+        self.anima_widget.Toggled.connect(lambda _: refresh_moss_disabled_state())
+        self.moss_widget.Toggled.connect(lambda _: refresh_flux_disabled_state())
 
         self.args_widget_array.append(EDMLossWidget())
         self.accelerate_widget = AccelerateWidget()
