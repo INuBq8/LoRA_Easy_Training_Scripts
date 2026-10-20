@@ -1,3 +1,73 @@
+<!-- UR-al fork section -->
+# UR-al fork (`moss-image` branch)
+
+MOSS-Image and Anima 3.8B v1.1 training, speed-ups and VRAM options on top of 67372a's LoRA_Easy_Training_Scripts.
+Everything from the **Updates** heading down is the parent project's README.
+
+## 10/20/2026 — what this fork changes
+
+What this branch adds to [67372a/LoRA_Easy_Training_Scripts](https://github.com/67372a/LoRA_Easy_Training_Scripts), described by what you get rather than by code.
+
+```
+git clone -b moss-image --recurse-submodules https://github.com/UR-al/LoRA_Easy_Training_Scripts
+```
+
+Measured on an RTX 5090 (32 GB), Windows 11, torch 2.7.1 (cu128), LoKr (factor 4) + DoRA.
+- The speed-ups do not change training results: with the same settings the loss is effectively identical, it is just faster.
+- VRAM figures are PyTorch peak memory in GiB, so they read a little lower than Task Manager.
+
+### New models
+- **MOSS-Image** LoRA / LyCORIS training — command line only for now (`examples/moss/train_moss.ps1`); the GUI has no MOSS option yet.
+- **Anima 3.8B v1.1 conditioning** (Qwen3.5-4B + Semantic Connector v2), enabled with `anima38_connector = true`. Training reads prompts the same way the Forge extension does at inference. Ported from [GumGum10/forge-anima-3.8B](https://github.com/GumGum10/forge-anima-3.8B) (MIT).
+
+### Speed
+
+| Model | Setting | Before | After |
+|---|---|---|---|
+| Anima 3.8B | 1536, batch 2 | 6.05 s/step | **4.83 s/step** (20% less time, ~1.25×) |
+| Anima 3.8B | 4 sample images during training | 73 s | **55 s** |
+| Anima 3.8B | fixed cost per step (mostly the LoKr+DoRA weight rebuild) | 0.49 s | **0.22 s** (1536 batch 1: 2.66 → 2.38 s/step) |
+| Anima 3.8B | text-encoder caching (Qwen3.5), per caption variant | 0.86 s | **0.18 s** (~4.7×) |
+| MOSS-Image | 1536, batch 2 | 14.3 s/step | **6.5 s/step** (~2.2×)* |
+| MOSS-Image | 1024, batch 2 | 5.05 s/step | **2.93 s/step** (~1.7×) |
+| MOSS-Image | sampling during training | — | ~1.8× faster per step |
+
+\* Includes switching the example config to flash attention (flash alone: 8.7 s/step); the rest is code.
+The lower fixed cost per step matters most for batch 1 + gradient accumulation.
+
+### VRAM
+
+**`use_ramtorch` improved** (an existing option): on Anima it now keeps only the LoRA-targeted layers' base weights in system RAM, and MOSS-Image supports it too.
+
+| Model | Setting | Off | On | Speed |
+|---|---|---|---|---|
+| MOSS-Image | 1536, batch 2 | 18.3 GiB | **9.8 GiB** | about the same (6.5 → 6.3 s/step) |
+| Anima 3.8B | 1536, batch 2 | 14.8 GiB | **8.6 GiB** | ~5% slower (~9% at batch 1) |
+| Anima 3.8B | 2048, batch 4 | 27.0 GiB | **21.0 GiB** | same (allocated 19.9 → 13.8 GiB) |
+
+Turn it on when VRAM is the limit; leave it off when you have room.
+
+The speed work also lowered peak VRAM: MOSS-Image 1536 batch 2 22.9 → 18.3 GiB, Anima 3.8B 1536 batch 2 16.1 → 14.8 GiB, and MOSS-Image 2048 batch 2 now fits (21.8 GiB; it ran out of memory before).
+
+### Training options
+- **Caption-variant caching for MOSS-Image and Anima 3.8B**: their text-encoder caches support `cache_caption_variants`, so `shuffle_caption` keeps working with cached outputs.
+- **`sigmoid_scale` presets** `"balanced"` / `"content"` / `"style"` (Anima and MOSS-Image, with `timestep_sampling = "sigmoid"`), plus `--scale_resume N` to train N more "style" epochs after a run ends.
+- **Separate learning rate / weight decay for DoRA magnitudes**: `--learning_rate_DoRA`, `--weight_decay_DoRA`.
+  Note: DoRA magnitudes now get **no weight decay by default**; set `weight_decay_DoRA` for the old behaviour.
+- **Config checks**: unknown keys in the training TOML are reported with suggestions (`strict_config_keys = true` makes them an error); values of the wrong type (e.g. `"false"` in quotes for an on/off option) stop the run with the file and line.
+
+### Behaviour changes and fixes
+- Multi-line caption files are now read whole (they were cut to the first line).
+- Transparent pixels are composited onto white.
+- Some LyCORIS options (`decompose_both`, `ggpo_conv`, `use_tucker`, …) given as the string `"False"` were treated as on.
+- CAME optimizer: no longer fails when several parameter groups share the same settings (e.g. Anima's 6 groups).
+- About 10 fixes ported from kohya-ss/sd-scripts `dev` (caption prefix/suffix order with wildcards, text-encoder cache uses the processed caption, line breaks in sample prompts, dpmsolver samplers on newer diffusers, …), plus `--show_timesteps` for MOSS-Image.
+
+### Tip: LoRA save precision
+Saving the same LoRA as fp32 / fp16 / bf16 and rendering it in Forge with the same seed, fp16 stayed 2–3× closer to the fp32 result than bf16 (PSNR vs fp32: fp16 33–41 dB, bf16 28–36 dB). All three look the same by eye, but `save_precision = "fp16"` is the better choice.
+
+---
+
 # Updates
 
 ## 05/30/2026
