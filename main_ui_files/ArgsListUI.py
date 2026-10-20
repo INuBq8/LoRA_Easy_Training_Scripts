@@ -124,6 +124,17 @@ class ArgsWidget(QtWidgets.QWidget):
 
         self.moss_widget.Toggled.connect(update_fp8_for_moss)
 
+        # Force-enable text-encoder output caching when Moss is active: moss_train_network.py hard-errors
+        # without --cache_text_encoder_outputs (the 16GB Qwen3.5-9B is only ever loaded during caching).
+        def force_cache_te_for_moss(moss_enabled: bool) -> None:
+            if not moss_enabled:
+                return
+            self.network_widget.widget.cache_te_outputs_enable.setChecked(True)
+            self.network_widget.widget.cache_te_to_disk_enable.setChecked(True)
+            self.network_widget.enable_disable_cache_te(True)
+
+        self.moss_widget.Toggled.connect(force_cache_te_for_moss)
+
         # Disable FP8 when Anima is active (fp8_base is unsupported by Anima DiT)
         def update_fp8_for_anima(anima_enabled: bool) -> None:
             general_args.widget.FP8_enable.setEnabled(not anima_enabled)
